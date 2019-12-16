@@ -1,50 +1,75 @@
 package com.example.testspring.controller;
 
 import com.example.testspring.exception.ResourceNotFoundException;
-import com.example.testspring.model.Question;
-import com.example.testspring.repository.QuestionRepository;
+import com.example.testspring.model.GeoClass;
+import com.example.testspring.model.Section;
+import com.example.testspring.repository.GeoClassRepository;
+import com.example.testspring.repository.SectionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 public class SectionController {
 
     @Autowired
-    private QuestionRepository questionRepository;
+    private GeoClassRepository geoClassRepository;
 
-    @GetMapping("/questions")
-    public Page<Question> getQuestions(Pageable pageable) {
-        return questionRepository.findAll(pageable);
+    @Autowired
+    private SectionRepository sectionRepository;
+
+    @GetMapping("/sections/by-code")
+    public Page<Section> getQuestions(@RequestParam String code, Pageable pageable) throws UnsupportedOperationException {
+        Page<Section> sections = sectionRepository.findAll(pageable);
+        List<Section> sectionList = sections.getContent();
+
+        sections.forEach(section -> {
+            List<GeoClass> geoClasses = geoClassRepository.findBySectionId(section.getId());
+            if (geoClasses.stream().anyMatch(gc -> gc.getCode().equals(code))) {
+                section.setGeoClasses(geoClasses);
+            } else {
+                sectionList.remove(section);
+            }
+        });
+
+        return new PageImpl<>(sectionList, pageable, sectionList.size());
+    }
+
+    @GetMapping("/sections")
+    public Page<Section> getQuestions(Pageable pageable) {
+        return sectionRepository.findAll(pageable);
     }
 
 
-    @PostMapping("/questions")
-    public Question createQuestion(@Valid @RequestBody Question question) {
-        return questionRepository.save(question);
+    @PostMapping("/sections")
+    public Section createQuestion(@Valid @RequestBody Section section) {
+        return sectionRepository.save(section);
     }
 
-    @PutMapping("/questions/{questionId}")
-    public Question updateQuestion(@PathVariable Long questionId,
-                                   @Valid @RequestBody Question questionRequest) {
-        return questionRepository.findById(questionId)
-                .map(question -> {
-                    question.setTitle(questionRequest.getTitle());
-                    question.setDescription(questionRequest.getDescription());
-                    return questionRepository.save(question);
-                }).orElseThrow(() -> new ResourceNotFoundException("Question not found with id " + questionId));
+    @PutMapping("/sections/{sectionId}")
+    public Section updateQuestion(@PathVariable Long sectionId,
+                                  @Valid @RequestBody Section sectionRequest) {
+        return sectionRepository.findById(sectionId)
+                .map(section -> {
+                    section.setName(sectionRequest.getName());
+                    return sectionRepository.save(section);
+                }).orElseThrow(() -> new ResourceNotFoundException("Section not found with id " + sectionId));
     }
 
 
-    @DeleteMapping("/questions/{questionId}")
-    public ResponseEntity<?> deleteQuestion(@PathVariable Long questionId) {
-        return questionRepository.findById(questionId)
-                .map(question -> {
-                    questionRepository.delete(question);
+    @DeleteMapping("/sections/{sectionId}")
+    public ResponseEntity<?> deleteQuestion(@PathVariable Long sectionId) {
+        return sectionRepository.findById(sectionId)
+                .map(section -> {
+                    sectionRepository.delete(section);
                     return ResponseEntity.ok().build();
-                }).orElseThrow(() -> new ResourceNotFoundException("Question not found with id " + questionId));
+                }).orElseThrow(() -> new ResourceNotFoundException("Section not found with id " + sectionId));
     }
 }
