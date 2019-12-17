@@ -4,7 +4,7 @@ import javax.persistence.*;
 
 @Entity
 @Table(name = "fileupload")
-public class FileUpload extends AuditModel {
+public class IOXLS extends AuditModel {
     @Id
     @GeneratedValue(generator = "fileupload_generator")
     @SequenceGenerator(
@@ -39,16 +39,18 @@ public class FileUpload extends AuditModel {
         return path;
     }
 
-    public void setPath(String text) {
-        this.path = text;
+    public IOXLS setPath(String path) {
+        this.path = path;
+        return this;
     }
 
     public String getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public IOXLS setStatus(String status) {
         this.status = status;
+        return this;
     }
 
 //    public Question getQuestion() {

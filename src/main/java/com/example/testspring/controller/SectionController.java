@@ -9,12 +9,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Slice;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 public class SectionController {
@@ -27,19 +26,7 @@ public class SectionController {
 
     @GetMapping("/sections/by-code")
     public Page<Section> getQuestions(@RequestParam String code, Pageable pageable) throws UnsupportedOperationException {
-        Page<Section> sections = sectionRepository.findAll(pageable);
-        List<Section> sectionList = sections.getContent();
-
-        sections.forEach(section -> {
-            List<GeoClass> geoClasses = geoClassRepository.findBySectionId(section.getId());
-            if (geoClasses.stream().anyMatch(gc -> gc.getCode().equals(code))) {
-                section.setGeoClasses(geoClasses);
-            } else {
-                sectionList.remove(section);
-            }
-        });
-
-        return new PageImpl<>(sectionList, pageable, sectionList.size());
+        return sectionRepository.findAllByGeoCode(geoClassRepository, code, pageable);
     }
 
     @GetMapping("/sections")
