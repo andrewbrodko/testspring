@@ -18,6 +18,7 @@ import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -101,17 +102,24 @@ public class IOXLSController
     @GetMapping(value = "/export/{fileId}/file",
             produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 
-    public @ResponseBody ResponseEntity<ByteArrayResource> getExportFile(@PathVariable Long fileId) throws IOException {
+    public @ResponseBody ResponseEntity<InputStreamResource> getExportFile(@PathVariable Long fileId) throws IOException {
 
         if (IOXLSRepository.findById(fileId).isPresent()) {
             if (IOXLSRepository.findById(fileId).get().getStatus().equals("DONE")) {
-                Path path = Paths.get(new File(IOXLSRepository.findById(fileId).get().getPath()).getAbsolutePath());
-                ByteArrayResource resource = new ByteArrayResource(Files.readAllBytes(path));
+                String path = IOXLSRepository.findById(fileId).get().getPath();
+                System.out.println(path);
+                String filename = path.split("\\\\")[path.split("\\\\").length - 1];
+                File file = new File(path);
 
-                return new ResponseEntity<>(resource, HttpStatus.OK);
+                return ResponseEntity.ok()
+                        .header("Content-Disposition", "attachment; filename=" + filename)
+                        .contentLength(file.length())
+                        .lastModified(file.lastModified())
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(new InputStreamResource(new FileInputStream(file)));
             }
         }
-        return new ResponseEntity<>(null, HttpStatus.NOT_FOUND);
+        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     private Map<String, String> getIOStatus(Long fileId) {
