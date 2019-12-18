@@ -8,6 +8,13 @@ import javax.persistence.*;
 import java.io.Serializable;
 import java.util.Date;
 
+/**
+ * Base model superclass.
+ * Implements services for handling create and update time.
+ * Used by {@link com.example.testspring.model.GeoClass}, {@link com.example.testspring.model.IOXLS},
+ * {@link com.example.testspring.model.Section}
+ */
+
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 @JsonIgnoreProperties(
@@ -25,7 +32,7 @@ public abstract class AuditModel implements Serializable {
     @LastModifiedDate
     private Date updatedAt;
 
-    // Getters and Setters (Omitted for brevity)
+    // Getters and Setters
     public Date getCreatedAt() {
         return createdAt;
     }

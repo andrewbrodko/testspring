@@ -10,6 +10,16 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import java.util.List;
 
+/**
+ * REST controller for GeoClass type requests.
+ * Handles: <ol>
+ *     <li>GET /sections/{sectionId}/geoclasses</li>
+ *     <li>POST /sections/{sectionId}/geoclasses</li>
+ *     <li>PUT /sections/{sectionId}/geoclasses/{geoclassId}</li>
+ *     <li>DELETE /sections/{sectionId}/geoclasses/{geoclassId}</li>
+ *     <ol/>
+ */
+
 @RestController
 public class GeoClassController {
 
@@ -20,13 +30,13 @@ public class GeoClassController {
     private SectionRepository sectionRepository;
 
     @GetMapping("/sections/{sectionId}/geoclasses")
-    public List<GeoClass> getAnswersByQuestionId(@PathVariable Long sectionId) {
+    public List<GeoClass> getGeoClassByQuestionId(@PathVariable Long sectionId) {
         return geoClassRepository.findBySectionId(sectionId);
     }
 
     @PostMapping("/sections/{sectionId}/geoclasses")
-    public GeoClass addAnswer(@PathVariable Long sectionId,
-                              @Valid @RequestBody GeoClass geoClass) {
+    public GeoClass addGeoClass(@PathVariable Long sectionId,
+                                @Valid @RequestBody GeoClass geoClass) {
         return sectionRepository.findById(sectionId)
                 .map(section -> {
                     geoClass.setSection(section);
@@ -35,9 +45,9 @@ public class GeoClassController {
     }
 
     @PutMapping("/sections/{sectionId}/geoclasses/{geoclassId}")
-    public GeoClass updateAnswer(@PathVariable Long sectionId,
-                                 @PathVariable Long geoclassId,
-                                 @Valid @RequestBody GeoClass geoClassRequest) {
+    public GeoClass updateGeoClass(@PathVariable Long sectionId,
+                                   @PathVariable Long geoclassId,
+                                   @Valid @RequestBody GeoClass geoClassRequest) {
         if(!sectionRepository.existsById(sectionId)) {
             throw new ResourceNotFoundException("Section not found with id " + sectionId);
         }
@@ -50,8 +60,8 @@ public class GeoClassController {
     }
 
     @DeleteMapping("/sections/{sectionId}/geoclasses/{geoclassId}")
-    public ResponseEntity<?> deleteAnswer(@PathVariable Long sectionId,
-                                          @PathVariable Long geoclassId) {
+    public ResponseEntity<?> deleteGeoClass(@PathVariable Long sectionId,
+                                            @PathVariable Long geoclassId) {
         if(!sectionRepository.existsById(sectionId)) {
             throw new ResourceNotFoundException("Section not found with id " + sectionId);
         }

@@ -1,14 +1,13 @@
 package com.example.testspring.controller;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 
+import com.example.testspring.exception.ResourceNotFoundException;
 import com.example.testspring.model.IOXLS;
 import com.example.testspring.model.GeoClass;
 import com.example.testspring.model.Section;
+import com.example.testspring.model.JobStatus;
 import com.example.testspring.repository.IOXLSRepository;
 import com.example.testspring.repository.GeoClassRepository;
 import com.example.testspring.repository.SectionRepository;
@@ -17,16 +16,25 @@ import org.apache.poi.hssf.usermodel.HSSFRow;
 import org.apache.poi.hssf.usermodel.HSSFSheet;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * REST controller for XLS I/O.
+ * Implements private methods <code>readXLS</code> and <code>writeXLS</code> for
+ * parsing XLS and exporting database to temporary XLS file.
+ * Handles: <ol>
+ *     <li>POST /import %FILE%</li>
+ *     <li>GET /import/{fileId}</li>
+ *     <li>GET /export</li>
+ *     <li>GET /export/{fileId}</li>
+ *     <li>GET /export/{fileId}/file</li>
+ *     <ol/>
+ */
 
 @RestController
 public class IOXLSController
@@ -40,53 +48,47 @@ public class IOXLSController
     @Autowired
     private IOXLSRepository IOXLSRepository;
 
-    String status = "none";
-
     @RequestMapping(value = "/import",
             method = RequestMethod.POST,
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-
-    public Map<String, Long> importXLS(@RequestParam("file") MultipartFile file) throws IOException{
-        IOXLS ioxls = new IOXLS();
-        ioxls.setStatus("IN_PROGRESS");
+    public Map<String, Long> importXLS(@RequestParam("file") MultipartFile file) {
+        IOXLS ioxls = new IOXLS().setJobStatus(JobStatus.IN_PROGRESS);
 
         new Thread(() -> {
             try {
                 this.readXLS(file.getInputStream());
-                IOXLSRepository.save(ioxls.setStatus("DONE"));
+                IOXLSRepository.save(ioxls.setJobStatus(JobStatus.DONE));
             } catch (IOException exe) {
                 exe.printStackTrace();
-                IOXLSRepository.save(ioxls.setStatus("ERROR"));
+                IOXLSRepository.save(ioxls.setJobStatus(JobStatus.ERROR));
             }
         }).start();
 
         Map<String, Long> resp = new HashMap<>();
         resp.put("id", IOXLSRepository.save(ioxls).getId());
-
         return resp;
     }
 
     @GetMapping("/import/{fileId}")
-    public Map<String, String> getImportStatus(@PathVariable Long fileId) throws NoSuchElementException {
-        return getIOStatus(fileId);
+    public Object getImportStatus(@PathVariable Long fileId) {
+        return IOXLSRepository.findById(fileId)
+                .map(ioxls -> {
+                    JobStatus jobStatus = ioxls.getJobStatus();
+                    return Collections.singletonMap("status", jobStatus);
+                }).orElseThrow(() -> new ResourceNotFoundException("FileIO not found with id " + fileId));
     }
 
     @GetMapping("/export")
-    public Map<String, Long> exportXLS(Pageable pageable) throws NoSuchElementException {
+    public Map<String, Long> exportXLS() {
         Map<String, Long> resp = new HashMap<>();
-
-        IOXLS ioxls = new IOXLS();
-        ioxls.setStatus("IN_PROGRESS");
+        IOXLS ioxls = new IOXLS().setJobStatus(JobStatus.IN_PROGRESS);
 
         new Thread(() -> {
             try {
-                ioxls
-                    .setPath(this.writeXLS())
-                    .setStatus("DONE");
-                IOXLSRepository.save(ioxls);
+                IOXLSRepository.save(ioxls.setPath(this.writeXLS()).setJobStatus(JobStatus.DONE));
             } catch (IOException exe) {
                 exe.printStackTrace();
-                IOXLSRepository.save(ioxls.setStatus("ERROR"));
+                IOXLSRepository.save(ioxls.setJobStatus(JobStatus.ERROR));
             }
         }).start();
 
@@ -95,41 +97,37 @@ public class IOXLSController
     }
 
     @GetMapping("/export/{fileId}")
-    public Map<String, String> getExportStatus(@PathVariable Long fileId) {
-        return getIOStatus(fileId);
+    public Object getExportStatus(@PathVariable Long fileId) {
+        return IOXLSRepository.findById(fileId)
+                .map(ioxls -> {
+                    JobStatus jobStatus = ioxls.getJobStatus();
+                    return Collections.singletonMap("status", jobStatus);
+                }).orElseThrow(() -> new ResourceNotFoundException("FileIO not found with id " + fileId));
     }
 
     @GetMapping(value = "/export/{fileId}/file",
             produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public @ResponseBody ResponseEntity<InputStreamResource>
+    getExportFile(@PathVariable Long fileId) {
+        return IOXLSRepository.findById(fileId)
+                .map(ioxls -> {
+                    String path = ioxls.getPath();
+                    System.out.println(path);
+                    String filename = path.split("\\\\")[path.split("\\\\").length - 1];
+                    File file = new File(path);
 
-    public @ResponseBody ResponseEntity<InputStreamResource> getExportFile(@PathVariable Long fileId) throws IOException {
-
-        if (IOXLSRepository.findById(fileId).isPresent()) {
-            if (IOXLSRepository.findById(fileId).get().getStatus().equals("DONE")) {
-                String path = IOXLSRepository.findById(fileId).get().getPath();
-                System.out.println(path);
-                String filename = path.split("\\\\")[path.split("\\\\").length - 1];
-                File file = new File(path);
-
-                return ResponseEntity.ok()
-                        .header("Content-Disposition", "attachment; filename=" + filename)
-                        .contentLength(file.length())
-                        .lastModified(file.lastModified())
-                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .body(new InputStreamResource(new FileInputStream(file)));
-            }
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-
-    private Map<String, String> getIOStatus(Long fileId) {
-        String status = "NOT EXISTS";
-
-        if (IOXLSRepository.findById(fileId).isPresent()) {
-            status = IOXLSRepository.findById(fileId).get().getStatus();
-        }
-
-        return Collections.singletonMap("status", status);
+                    try {
+                        return ResponseEntity.ok()
+                                .header("Content-Disposition", "attachment; filename=" + filename)
+                                .contentLength(file.length())
+                                .lastModified(file.lastModified())
+                                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                                .body(new InputStreamResource(new FileInputStream(file)));
+                    } catch (FileNotFoundException exe) {
+                        exe.printStackTrace();
+                        return new ResponseEntity<InputStreamResource>(HttpStatus.INTERNAL_SERVER_ERROR);
+                    }
+                }).orElseThrow(() -> new ResourceNotFoundException("FileIO not found with id " + fileId));
     }
 
     private void readXLS(InputStream fileInputStream) throws IOException {
@@ -147,7 +145,7 @@ public class IOXLSController
                 GeoClass geoClass = new GeoClass();
                 geoClass.setName(row.getCell(j).getStringCellValue()); // geoclass
                 geoClass.setCode(row.getCell(j + 1).getStringCellValue()); // geocode
-                geoClass.setSection(section); // geocode
+                geoClass.setSection(section);
 
                 geoClassRepository.save(geoClass);
             }
@@ -178,9 +176,4 @@ public class IOXLSController
         fout.close();
         return temp.getAbsolutePath();
     }
-
-//    @GetMapping("/import/{fileId}")
-//    public String getAnswersByQuestionId(@PathVariable Long fileId) {
-//        return "id: " + fileId + "; status: " + this.status;
-//    }
 }

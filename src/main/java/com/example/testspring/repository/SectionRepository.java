@@ -7,10 +7,16 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
+/**
+ * SectionRepository class for handling access to PostgreSQL.
+ * Implements methods for <code>'geoclasses'</code> data injection
+ * into <code>{@link com.example.testspring.model.Section}</code> entity.
+ */
 
 @Repository
 public interface SectionRepository extends JpaRepository<Section, Long> {
@@ -24,18 +30,6 @@ public interface SectionRepository extends JpaRepository<Section, Long> {
                 section.setGeoClasses(geoClasses);
                 sectionList.add(section);
             }
-        });
-
-        return new PageImpl<>(sectionList, pageable, sectionList.size());
-    }
-
-    default Page<Section> findAllWithGeoClasses(GeoClassRepository geoClassRepository, Pageable pageable) {
-        Page<Section> sections = this.findAll(pageable);
-        List<Section> sectionList = new ArrayList<>();
-
-        sections.forEach(section -> {
-            section.setGeoClasses(geoClassRepository.findBySectionId(section.getId()));
-            sectionList.add(section);
         });
 
         return new PageImpl<>(sectionList, pageable, sectionList.size());

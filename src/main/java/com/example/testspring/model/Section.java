@@ -1,12 +1,13 @@
 package com.example.testspring.model;
 
-import com.example.testspring.model.GeoClass;
-import org.hibernate.service.spi.InjectService;
-
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.Size;
 import java.util.List;
+
+/**
+ * Section entity.
+ * Used by {@link com.example.testspring.controller.SectionController}
+ */
 
 @Entity
 @Table(name = "sections")
@@ -21,34 +22,36 @@ public class Section extends AuditModel {
     private Long id;
 
     @NotBlank
-//    @Size(min = 3, max = 100)
     private String name;
 
     @Transient
     private List<GeoClass> geoClasses;
 
-    // Getters and Setters (Omitted for brevity)
+    // Getters and Setters
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public Section setId(Long id) {
         this.id = id;
+        return this;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String title) {
+    public Section setName(String title) {
         this.name = title;
+        return this;
     }
 
     public List<GeoClass> getGeoClasses() {
         return geoClasses;
     }
 
-    public void setGeoClasses(List<GeoClass> geoClasses) {
+    public Section setGeoClasses(List<GeoClass> geoClasses) {
         this.geoClasses = geoClasses;
+        return this;
     }
 }

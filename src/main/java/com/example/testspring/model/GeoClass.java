@@ -6,6 +6,11 @@ import javax.persistence.*;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+/**
+ * GeoClass entity.
+ * Used by {@link com.example.testspring.controller.GeoClassController}
+ */
+
 @Entity
 @Table(name = "geoclasses")
 public class GeoClass extends AuditModel {
@@ -30,36 +35,40 @@ public class GeoClass extends AuditModel {
     @JsonIgnore
     private Section section;
 
-    // Getters and Setters (Omitted for brevity)
+    // Getters and Setters
     public Long getId() {
         return id;
     }
 
-    public void setId(Long id) {
+    public GeoClass setId(Long id) {
         this.id = id;
+        return this;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
+    public GeoClass setName(String name) {
         this.name = name;
+        return this;
     }
 
     public String getCode() {
         return code;
     }
 
-    public void setCode(String code) {
+    public GeoClass setCode(String code) {
         this.code = code;
+        return this;
     }
 
     public Section getSection() {
         return section;
     }
 
-    public void setSection(Section section) {
+    public GeoClass setSection(Section section) {
         this.section = section;
+        return this;
     }
 }
